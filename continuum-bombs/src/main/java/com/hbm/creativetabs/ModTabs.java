@@ -211,7 +211,7 @@ public final class ModTabs {
     private static final java.util.regex.Pattern MISSILE_ITEM = java.util.regex.Pattern.compile(
             "missile_.*|mp_.*|.*warhead.*|designator.*|launch_pad.*|launch_table.*|compact_launcher.*|.*_launcher");
 
-    static boolean isNukeItem(Item item) {
+    public static boolean isNukeItem(Item item) {
         var id = BuiltInRegistries.ITEM.getKey(item); // `var`: the id type is ResourceLocation below 26.1 and Identifier from 26.1
         if (id == null || !Constants.MOD_ID.equals(id.getNamespace())) return false;
         if (NUKE_ITEMS.contains(id.getPath())) return true;

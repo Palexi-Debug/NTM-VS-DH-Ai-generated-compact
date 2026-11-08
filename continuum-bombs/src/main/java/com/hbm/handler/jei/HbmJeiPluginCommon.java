@@ -66,6 +66,47 @@ public final class HbmJeiPluginCommon {
         com.hbm.Constants.LOG.info("[JEI] {} HBM fluid(s) listed as fluid ingredients", fluids.size());
     }
 
+    /**
+     * FORK (bombs only): hides every HBM item and fluid from JEI's ingredient list except the bombs and their parts
+     * (the same list as the creative tab, {@link com.hbm.creativetabs.ModTabs#isNukeItem}). The rest of HBM is switched
+     * off in this fork, so listing it only clutters JEI.
+     */
+    public static void hideNonBombIngredients(mezz.jei.api.runtime.IJeiRuntime runtime) {
+        try {
+            var manager = runtime.getIngredientManager();
+            java.util.List<net.minecraft.world.item.ItemStack> hiddenItems = new java.util.ArrayList<>();
+            for (net.minecraft.world.item.ItemStack stack : manager.getAllIngredients(mezz.jei.api.constants.VanillaTypes.ITEM_STACK)) {
+                var id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+                if (id != null && com.hbm.Constants.MOD_ID.equals(id.getNamespace())
+                        && !com.hbm.creativetabs.ModTabs.isNukeItem(stack.getItem())) {
+                    hiddenItems.add(stack);
+                }
+            }
+            manager.removeIngredientsAtRuntime(mezz.jei.api.constants.VanillaTypes.ITEM_STACK, hiddenItems);
+            int hiddenFluids = hideHbmFluids(runtime, runtime.getJeiHelpers().getPlatformFluidHelper());
+            com.hbm.Constants.LOG.info("[JEI] hid {} non-bomb HBM item(s) and {} HBM fluid(s)", hiddenItems.size(), hiddenFluids);
+        } catch (RuntimeException e) {
+            com.hbm.Constants.LOG.warn("[JEI] could not hide non-bomb HBM ingredients: {}", e.toString());
+        }
+    }
+
+    private static <T> int hideHbmFluids(mezz.jei.api.runtime.IJeiRuntime runtime, mezz.jei.api.helpers.IPlatformFluidHelper<T> fluids) {
+        mezz.jei.api.ingredients.IIngredientTypeWithSubtypes<net.minecraft.world.level.material.Fluid, T> type =
+                fluids.getFluidIngredientType();
+        var manager = runtime.getIngredientManager();
+        java.util.List<T> hidden = new java.util.ArrayList<>();
+        for (T ingredient : manager.getAllIngredients(type)) {
+            net.minecraft.world.level.material.Fluid fluid = type.getBase(ingredient);
+            var id = net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(fluid);
+            if (dev.golem.core.fluid.TokenFluids.isToken(fluid)
+                    || (id != null && com.hbm.Constants.MOD_ID.equals(id.getNamespace()))) {
+                hidden.add(ingredient);
+            }
+        }
+        manager.removeIngredientsAtRuntime(type, hidden);
+        return hidden.size();
+    }
+
     /** The display names of the JEI fluid ingredients that are HBM fluids. */
     private static java.util.List<String> hbmFluidIngredients(mezz.jei.api.runtime.IJeiRuntime runtime) {
         return hbmFluidIngredients(runtime, runtime.getJeiHelpers().getPlatformFluidHelper());
