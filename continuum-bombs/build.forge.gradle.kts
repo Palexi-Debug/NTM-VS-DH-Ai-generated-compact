@@ -360,3 +360,25 @@ tasks.jar {
             !e.name.matches(Regex("(explosion|nuclear|muke|robin).*"))
     }
 }
+
+// FORK (bombs only): HBM's own crafting/smelting recipes (data/hbm/recipes) only serve the rest of HBM, which is switched
+// off here, and they would show up by name in JEI's crafting view and the recipe book. They are left out of the jar.
+// The bomb recipes live in data/hbmbombs and stay, and the machine recipe types (hbm:assembly_machine, ...) stay
+// because the mod's own recipe loaders may still read them.
+run {
+    val viewerTypes = setOf(
+        "minecraft:crafting_shaped", "minecraft:crafting_shapeless", "minecraft:smelting", "minecraft:blasting",
+        "minecraft:smoking", "minecraft:campfire_cooking", "minecraft:stonecutting", "minecraft:smithing",
+        "minecraft:smithing_transform", "minecraft:smithing_trim", "hbm:component_shaped", "hbm:component_shapeless",
+    )
+    val spec = Spec<FileTreeElement> { element ->
+        if (element.isDirectory || !element.relativePath.pathString.let { it.startsWith("data/hbm/recipes/") && it.endsWith(".json") }) {
+            false
+        } else {
+            val json = try { groovy.json.JsonSlurper().parse(element.file) } catch (e: Exception) { null }
+            (json as? Map<*, *>)?.get("type") in viewerTypes
+        }
+    }
+    tasks.processResources { exclude(spec) }
+    tasks.jar { exclude(spec) }
+}
